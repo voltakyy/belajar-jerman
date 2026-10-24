@@ -21,7 +21,8 @@ const state = {
   settings: storageService.getSettings(),
   bookmarks: storageService.getBookmarks(),
   completedIds: storageService.getCompleted(),
-  customDrillValues: {} // Map: convId -> { [placeholder]: string }
+  customDrillValues: {}, // Map: convId -> { [placeholder]: string }
+  isMobileCatalogOpen: false
 };
 
 // Initialize Speech Rate
@@ -383,6 +384,92 @@ function renderApp() {
         ${renderCurrentTabContent(currentConv, filteredList)}
       </main>
 
+      <!-- MOBILE FLOATING AUDIO CONTROLLER (UNTUK DIALOGUES VIEW) -->
+      ${state.activeTab === 'dialogues' ? `
+        <div class="mobile-floating-player ${state.isSequentialPlaying ? 'playing' : ''}">
+          <div class="floating-player-info">
+            <span class="floating-play-indicator">${state.isSequentialPlaying ? '🔊 SEDANG MEMBACA...' : '⏸ DIALOG AKTIF'}</span>
+            <span class="floating-play-title">${currentConv.icon} ${currentConv.titleDe}</span>
+          </div>
+          <div class="floating-player-controls">
+            <button class="floating-speed-btn" id="floatingSpeedBtn" title="Ubah Kecepatan Suara">${state.settings.audioSpeed}x</button>
+            <button class="floating-play-btn ${state.isSequentialPlaying ? 'active' : ''}" id="floatingPlayBtn">
+              ${state.isSequentialPlaying ? '⏹ Stop' : '▶ Putar'}
+            </button>
+          </div>
+        </div>
+      ` : ''}
+
+      <!-- MOBILE BOTTOM NAVIGATION (THUMB-FRIENDLY BAR) -->
+      <nav class="mobile-bottom-nav" aria-label="Navigasi Menu HP">
+        <button class="bottom-nav-item ${state.activeTab === 'dialogues' ? 'active' : ''}" data-tab="dialogues">
+          <span class="bottom-nav-icon">💬</span>
+          <span class="bottom-nav-text">Dialog</span>
+        </button>
+        <button class="bottom-nav-item ${state.activeTab === 'patterns' ? 'active' : ''}" data-tab="patterns">
+          <span class="bottom-nav-icon">⚡</span>
+          <span class="bottom-nav-text">Satzbau</span>
+        </button>
+        <button class="bottom-nav-item ${state.activeTab === 'notebook' ? 'active' : ''}" data-tab="notebook">
+          <span class="bottom-nav-icon">📓</span>
+          <span class="bottom-nav-text">Catatan</span>
+          ${state.bookmarks.length > 0 ? `<span class="bottom-nav-badge">${state.bookmarks.length}</span>` : ''}
+        </button>
+        <button class="bottom-nav-item ${state.activeTab === 'method' ? 'active' : ''}" data-tab="method">
+          <span class="bottom-nav-icon">📖</span>
+          <span class="bottom-nav-text">Metode</span>
+        </button>
+      </nav>
+
+      <!-- MOBILE CATALOG DRAWER MODAL -->
+      <div class="mobile-catalog-drawer ${state.isMobileCatalogOpen ? 'open' : ''}" id="mobileCatalogDrawer">
+        <div class="drawer-backdrop" id="closeMobileCatalogBackdrop"></div>
+        <div class="drawer-panel">
+          <div class="drawer-handle-bar">
+            <div class="drawer-handle"></div>
+          </div>
+          <div class="drawer-header">
+            <div class="drawer-title">
+              <span>📚 Daftar Percakapan</span>
+              <span class="drawer-count">${filteredList.length} Unit</span>
+            </div>
+            <button class="drawer-close-btn" id="closeMobileCatalogBtn">✕</button>
+          </div>
+
+          <!-- CATEGORY PILLS IN DRAWER -->
+          <div class="category-scroll-bar drawer-cats">
+            <button class="cat-pill-btn ${state.selectedCategory === 'all' ? 'active' : ''}" data-cat="all">🌟 Semua</button>
+            ${CATEGORIES.map(cat => `
+              <button class="cat-pill-btn ${state.selectedCategory === cat.id ? 'active' : ''}" data-cat="${cat.id}">
+                ${cat.icon} ${cat.label}
+              </button>
+            `).join('')}
+          </div>
+
+          <div class="catalog-list drawer-list">
+            ${filteredList.map(item => {
+              const active = item.id === currentConv.id;
+              const completed = state.completedIds.includes(item.id);
+              const levelClass = item.level === 'Dasar' ? 'badge-dasar' : (item.level === 'Menengah' ? 'badge-menengah' : 'badge-praktis');
+              return `
+                <button class="catalog-card ${active ? 'active' : ''}" data-conv-id="${item.id}">
+                  <div class="card-top-row">
+                    <span class="card-category-badge">${item.icon} ${item.category}</span>
+                    <span class="card-level-badge ${levelClass}">${item.level}</span>
+                  </div>
+                  <div class="card-title-de">${item.titleDe}</div>
+                  <div class="card-title-id">${item.title}</div>
+                  <div class="card-footer-meta">
+                    <span>${item.dialogue.length} Kalimat</span>
+                    ${completed ? '<span class="completed-check">✓ Dipelajari</span>' : '<span>Belum</span>'}
+                  </div>
+                </button>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      </div>
+
       <!-- FOOTER -->
       <footer class="app-footer">
         <div class="footer-content">
@@ -417,10 +504,13 @@ function renderCurrentTabContent(currentConv, filteredList) {
 function renderDialoguesTab(currentConv, filteredList) {
   const isCompleted = state.completedIds.includes(currentConv.id);
   const displayClass = `mode-${state.settings.displayMode} ${state.settings.showGenderColors ? 'gender-colors-active' : ''}`;
+  const convIndex = CONVERSATIONS.findIndex(c => c.id === currentConv.id);
+  const prevConv = convIndex > 0 ? CONVERSATIONS[convIndex - 1] : null;
+  const nextConv = convIndex < CONVERSATIONS.length - 1 ? CONVERSATIONS[convIndex + 1] : null;
 
   return `
     <div class="dialogue-workbench">
-      <!-- SIDEBAR CATALOG -->
+      <!-- SIDEBAR CATALOG (DESKTOP) -->
       <aside class="catalog-sidebar">
         <div class="catalog-header">
           <div class="catalog-title">Daftar Percakapan</div>
@@ -429,6 +519,7 @@ function renderDialoguesTab(currentConv, filteredList) {
 
         <!-- CATEGORY PILL BAR -->
         <div class="category-scroll-bar">
+          <button class="cat-pill-btn ${state.selectedCategory === 'all' ? 'active' : ''}" data-cat="all">🌟 Semua</button>
           ${CATEGORIES.map(cat => `
             <button 
               class="cat-pill-btn ${state.selectedCategory === cat.id ? 'active' : ''}" 
@@ -469,19 +560,42 @@ function renderDialoguesTab(currentConv, filteredList) {
 
       <!-- CENTRAL STUDY CANVAS -->
       <section class="study-canvas ${displayClass}">
-        <!-- MOBILE TOPIC QUICK SELECTOR (UNTUK KENYAMANAN LAYAR HP) -->
-        <div class="mobile-topic-selector">
-          <div class="mobile-selector-header">
-            <span>📖 Pilih Percakapan:</span>
-            <span class="card-category-badge">${currentConv.icon} ${currentConv.category}</span>
-          </div>
-          <select id="mobileTopicSelect" class="mobile-dropdown-select">
-            ${CONVERSATIONS.map(c => `
-              <option value="${c.id}" ${c.id === currentConv.id ? 'selected' : ''}>
-                ${c.icon} ${c.titleDe} — ${c.title}
-              </option>
+        <!-- MOBILE TOPIC QUICK SWITCHER (PREV / NEXT / DRAWER) -->
+        <div class="mobile-topic-nav-container">
+          <!-- QUICK CATEGORY CHIPS SCROLLER -->
+          <div class="mobile-cat-scroll">
+            <button class="mobile-cat-chip ${state.selectedCategory === 'all' ? 'active' : ''}" data-cat="all">
+              🌟 Semua (${CONVERSATIONS.length})
+            </button>
+            ${CATEGORIES.map(cat => `
+              <button 
+                class="mobile-cat-chip ${state.selectedCategory === cat.id ? 'active' : ''}" 
+                data-cat="${cat.id}"
+              >
+                ${cat.icon} ${cat.label}
+              </button>
             `).join('')}
-          </select>
+          </div>
+
+          <!-- TOPIC STEPPER CARD (SATU KETUKAN JEMPOL) -->
+          <div class="topic-stepper-card">
+            <button class="stepper-step-btn prev-btn" id="prevTopicBtn" ${prevConv ? '' : 'disabled'} title="Topik Sebelumnya">
+              <span class="stepper-arrow">◀</span>
+              <span class="stepper-label">Prev</span>
+            </button>
+            <button class="stepper-center-btn" id="openMobileCatalogBtn" title="Ketuk untuk melihat semua topik percakapan">
+              <div class="stepper-tag-row">
+                <span class="stepper-badge">Unit ${convIndex + 1} / ${CONVERSATIONS.length}</span>
+                <span class="stepper-cat">${currentConv.icon} ${currentConv.category}</span>
+              </div>
+              <div class="stepper-topic-title">${currentConv.titleDe}</div>
+              <div class="stepper-action-text">Ketuk untuk pilih topik ▾</div>
+            </button>
+            <button class="stepper-step-btn next-btn" id="nextTopicBtn" ${nextConv ? '' : 'disabled'} title="Topik Berikutnya">
+              <span class="stepper-label">Next</span>
+              <span class="stepper-arrow">▶</span>
+            </button>
+          </div>
         </div>
 
         <!-- HERO CARD -->
@@ -511,7 +625,7 @@ function renderDialoguesTab(currentConv, filteredList) {
             <button class="tool-btn ${state.isSequentialPlaying ? 'primary' : ''}" id="playAllBtn">
               ${state.isSequentialPlaying ? '⏹ Berhenti' : '▶ Putar Percakapan'}
             </button>
-            <button class="tool-btn ${state.shadowingMode ? 'active' : ''}" id="toggleShadowingBtn" title="Jeda 2.5 detik tiap kalimat untuk menirukan pengucapan">
+            <button class="tool-btn ${state.shadowingMode ? 'active' : ''}" id="toggleShadowingBtn" title="Jeda 3.4 detik tiap kalimat untuk menirukan pengucapan">
               🔁 Shadowing: ${state.shadowingMode ? 'Aktif' : 'Nonaktif'}
             </button>
             <button class="tool-btn" id="speedToggleBtn" title="Ubah Kecepatan Suara Audio">
@@ -523,9 +637,9 @@ function renderDialoguesTab(currentConv, filteredList) {
           <div class="toolbar-group">
             <div class="segmented-control" title="Mode Tampilan Teks & Fonetik">
               <button class="seg-btn ${state.settings.displayMode === 'full' ? 'active' : ''}" data-mode="full">Lengkap</button>
-              <button class="seg-btn ${state.settings.displayMode === 'de-only' ? 'active' : ''}" data-mode="de-only" title="Hanya bahasa Jerman, uji ingatan membaca">Deutsch Saja</button>
-              <button class="seg-btn ${state.settings.displayMode === 'phonetic-only' ? 'active' : ''}" data-mode="phonetic-only" title="Hanya panduan lafal">Lafal Saja</button>
-              <button class="seg-btn ${state.settings.displayMode === 'blind' ? 'active' : ''}" data-mode="blind" title="Hanya terjemahan Indonesia">Blind Test</button>
+              <button class="seg-btn ${state.settings.displayMode === 'de-only' ? 'active' : ''}" data-mode="de-only" title="Hanya bahasa Jerman, uji ingatan membaca">Deutsch</button>
+              <button class="seg-btn ${state.settings.displayMode === 'phonetic-only' ? 'active' : ''}" data-mode="phonetic-only" title="Hanya panduan lafal">Lafal</button>
+              <button class="seg-btn ${state.settings.displayMode === 'blind' ? 'active' : ''}" data-mode="blind" title="Hanya terjemahan Indonesia">Blind</button>
             </div>
             <button class="tool-btn ${state.settings.showGenderColors ? 'active' : ''}" id="toggleGenderColorBtn" title="Pewarnaan Artikel Gender (der/die/das)">
               🎨 Warna Gender
@@ -822,14 +936,15 @@ function renderMethodGuideTab() {
 
 // ---------------- ATTACH EVENT LISTENERS ----------------
 function attachEventListeners(currentConv) {
-  // Navigation Tabs Switch
-  document.querySelectorAll('.nav-tab-btn').forEach(btn => {
+  // Navigation Tabs Switch (Desktop & Mobile)
+  document.querySelectorAll('.nav-tab-btn, .bottom-nav-item').forEach(btn => {
     btn.addEventListener('click', () => {
       speechService.stop();
       state.isSequentialPlaying = false;
       state.activePlayingLineIndex = null;
       state.activeTab = btn.getAttribute('data-tab');
       renderApp();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     });
   });
 
@@ -899,9 +1014,94 @@ function attachEventListeners(currentConv) {
         state.selectedSlotIndex = 0;
         state.inspectedToken = null;
         state.revealedLines.clear();
+        state.isMobileCatalogOpen = false;
+        renderApp();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    });
+
+    // Mobile Category Chips
+    document.querySelectorAll('.mobile-cat-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        state.selectedCategory = chip.getAttribute('data-cat');
         renderApp();
       });
     });
+
+    // Mobile Stepper: Prev & Next Topic
+    const prevBtn = document.getElementById('prevTopicBtn');
+    if (prevBtn) {
+      prevBtn.addEventListener('click', () => {
+        const convIndex = CONVERSATIONS.findIndex(c => c.id === state.currentConversationId);
+        if (convIndex > 0) {
+          speechService.stop();
+          state.isSequentialPlaying = false;
+          state.activePlayingLineIndex = null;
+          state.currentConversationId = CONVERSATIONS[convIndex - 1].id;
+          state.selectedSlotIndex = 0;
+          state.inspectedToken = null;
+          state.revealedLines.clear();
+          renderApp();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      });
+    }
+
+    const nextBtn = document.getElementById('nextTopicBtn');
+    if (nextBtn) {
+      nextBtn.addEventListener('click', () => {
+        const convIndex = CONVERSATIONS.findIndex(c => c.id === state.currentConversationId);
+        if (convIndex < CONVERSATIONS.length - 1) {
+          speechService.stop();
+          state.isSequentialPlaying = false;
+          state.activePlayingLineIndex = null;
+          state.currentConversationId = CONVERSATIONS[convIndex + 1].id;
+          state.selectedSlotIndex = 0;
+          state.inspectedToken = null;
+          state.revealedLines.clear();
+          renderApp();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      });
+    }
+
+    // Mobile Catalog Drawer Open / Close
+    const openDrawerBtn = document.getElementById('openMobileCatalogBtn');
+    if (openDrawerBtn) {
+      openDrawerBtn.addEventListener('click', () => {
+        state.isMobileCatalogOpen = true;
+        renderApp();
+      });
+    }
+
+    const closeDrawerBtn = document.getElementById('closeMobileCatalogBtn');
+    if (closeDrawerBtn) {
+      closeDrawerBtn.addEventListener('click', () => {
+        state.isMobileCatalogOpen = false;
+        renderApp();
+      });
+    }
+
+    const closeDrawerBackdrop = document.getElementById('closeMobileCatalogBackdrop');
+    if (closeDrawerBackdrop) {
+      closeDrawerBackdrop.addEventListener('click', () => {
+        state.isMobileCatalogOpen = false;
+        renderApp();
+      });
+    }
+
+    // Floating Mobile Player Controls
+    const floatPlayBtn = document.getElementById('floatingPlayBtn');
+    if (floatPlayBtn) {
+      floatPlayBtn.addEventListener('click', () => {
+        const playBtn = document.getElementById('playAllBtn');
+        if (playBtn) playBtn.click();
+      });
+    }
+    const floatSpeedBtn = document.getElementById('floatingSpeedBtn');
+    if (floatSpeedBtn) {
+      floatSpeedBtn.addEventListener('click', cycleAudioSpeed);
+    }
 
     // Mark as Completed Toggle
     const toggleCompletedBtn = document.getElementById('toggleCompletedBtn');
