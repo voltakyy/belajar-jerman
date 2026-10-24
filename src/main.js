@@ -22,7 +22,8 @@ const state = {
   bookmarks: storageService.getBookmarks(),
   completedIds: storageService.getCompleted(),
   customDrillValues: {}, // Map: convId -> { [placeholder]: string }
-  isMobileCatalogOpen: false
+  isMobileCatalogOpen: false,
+  isSearchOpen: false
 };
 
 // Initialize Speech Rate
@@ -308,52 +309,40 @@ function renderApp() {
           <div class="brand-wrapper">
             <div class="brand-seal">DE</div>
             <div class="brand-title-group">
-              <h1>
-                Ruang Belajar Bahasa Jerman
-                <span class="brand-badge">Deutsch im Alltag</span>
-              </h1>
-              <div class="brand-sub">Platform Pribadi Penguasaan Percakapan dengan Metode Chunking</div>
+              <h1>Deutsch Lernen<span class="brand-badge">Alltag</span></h1>
+              <div class="brand-sub">Penguasaan Percakapan Bahasa Jerman Sehari-hari</div>
             </div>
-          </div>
-
-          <div class="header-search">
-            <svg class="search-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-            <input 
-              type="text" 
-              id="globalSearchInput" 
-              placeholder="Cari percakapan, kata Jerman, lafal, atau arti..." 
-              value="${escapeHtml(state.searchQuery)}"
-            />
           </div>
 
           <div class="header-actions">
             <!-- TOMBOL UBAH KECEPATAN SUPER KONTRAS DI ATAS PAGE -->
-            <button class="top-speed-btn" id="topSpeedToggleBtn" title="Klik untuk ubah kecepatan membaca audio Jerman">
+            <button class="top-speed-btn" id="topSpeedToggleBtn" title="Klik untuk ubah kecepatan membaca audio">
               <span class="speed-bolt">⚡</span>
-              <span class="speed-text-wrap">
-                <span class="speed-title">KECEPATAN BACA:</span>
-                <span class="speed-value-row">
-                  <strong class="speed-value">${state.settings.audioSpeed}x</strong>
-                  <span class="speed-badge">${getSpeedDesc(state.settings.audioSpeed)}</span>
-                </span>
-              </span>
+              <strong class="speed-value">${state.settings.audioSpeed}x</strong>
             </button>
 
-            <div class="stat-pill" title="Total percakapan yang selesai dipelajari">
-              <span>Selesai:</span>
-              <strong>${state.completedIds.length}/${CONVERSATIONS.length}</strong>
-            </div>
-            <div class="stat-pill" title="Frasa yang disimpan ke buku catatan pribadi">
-              <span>Catatan:</span>
-              <strong>${state.bookmarks.length} Frasa</strong>
-            </div>
-            <button class="theme-toggle-btn" id="themeToggleBtn" title="Ganti Tema (Deep Navy / Warm Daylight)">
+            <button class="theme-toggle-btn" id="themeToggleBtn" title="Ganti Tema">
               ${state.settings.theme === 'warm-light' ? '🌙' : '☀️'}
             </button>
+
+            <button class="search-toggle-btn" id="searchToggleBtn" title="Cari Percakapan">
+              🔍
+            </button>
           </div>
+        </div>
+
+        <!-- SEARCH BAR (COLLAPSIBLE) -->
+        <div class="header-search ${state.isSearchOpen || Boolean(state.searchQuery) ? 'open' : ''}" id="headerSearchBar">
+          <svg class="search-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input 
+            type="text" 
+            id="globalSearchInput" 
+            placeholder="Cari kata, lafal, atau arti..." 
+            value="${escapeHtml(state.searchQuery)}"
+          />
         </div>
       </header>
 
@@ -574,44 +563,33 @@ function renderDialoguesTab(currentConv, filteredList) {
               <span class="card-category-badge">${currentConv.icon} ${currentConv.category}</span>
               <span class="card-level-badge ${currentConv.level === 'Dasar' ? 'badge-dasar' : (currentConv.level === 'Menengah' ? 'badge-menengah' : 'badge-praktis')}">${currentConv.level}</span>
             </div>
-            <button class="tool-btn ${isCompleted ? 'active' : ''}" id="toggleCompletedBtn">
-              ${isCompleted ? '✓ Telah Dikuasai' : 'Tandai Selesai'}
+            <button class="tool-btn-sm ${isCompleted ? 'active' : ''}" id="toggleCompletedBtn">
+              ${isCompleted ? '✓ Selesai' : 'Tandai ✓'}
             </button>
           </div>
-
-          <div class="hero-titles">
-            <div class="hero-de-title">${currentConv.titleDe}</div>
-            <div class="hero-id-title">${currentConv.title}</div>
-          </div>
-
-          <div class="hero-summary">${currentConv.summary}</div>
+          <div class="hero-de-title">${currentConv.titleDe}</div>
+          <div class="hero-id-title">${currentConv.title}</div>
         </div>
 
         <!-- CONTROL TOOLBAR -->
         <div class="study-toolbar">
-          <!-- AUDIO ACTIONS -->
           <div class="toolbar-group">
             <button class="tool-btn ${state.isSequentialPlaying ? 'primary' : ''}" id="playAllBtn">
-              ${state.isSequentialPlaying ? '⏹ Berhenti' : '▶ Putar Percakapan'}
+              ${state.isSequentialPlaying ? '⏹ Stop' : '▶ Putar'}
             </button>
-            <button class="tool-btn ${state.shadowingMode ? 'active' : ''}" id="toggleShadowingBtn" title="Jeda 3.4 detik tiap kalimat untuk menirukan pengucapan">
-              🔁 Shadowing: ${state.shadowingMode ? 'Aktif' : 'Nonaktif'}
-            </button>
-            <button class="tool-btn" id="speedToggleBtn" title="Ubah Kecepatan Suara Audio">
-              ⚡ Kecepatan: ${state.settings.audioSpeed}x (${getSpeedDesc(state.settings.audioSpeed)})
+            <button class="tool-btn ${state.shadowingMode ? 'active' : ''}" id="toggleShadowingBtn" title="Jeda tiap kalimat untuk menirukan pengucapan">
+              🔁 ${state.shadowingMode ? 'Shadow ON' : 'Shadow'}
             </button>
           </div>
-
-          <!-- DISPLAY SCAFFOLDING -->
           <div class="toolbar-group">
-            <div class="segmented-control" title="Mode Tampilan Teks & Fonetik">
-              <button class="seg-btn ${state.settings.displayMode === 'full' ? 'active' : ''}" data-mode="full">Lengkap</button>
-              <button class="seg-btn ${state.settings.displayMode === 'de-only' ? 'active' : ''}" data-mode="de-only" title="Hanya bahasa Jerman, uji ingatan membaca">Deutsch</button>
-              <button class="seg-btn ${state.settings.displayMode === 'phonetic-only' ? 'active' : ''}" data-mode="phonetic-only" title="Hanya panduan lafal">Lafal</button>
-              <button class="seg-btn ${state.settings.displayMode === 'blind' ? 'active' : ''}" data-mode="blind" title="Hanya terjemahan Indonesia">Blind</button>
+            <div class="segmented-control">
+              <button class="seg-btn ${state.settings.displayMode === 'full' ? 'active' : ''}" data-mode="full">Semua</button>
+              <button class="seg-btn ${state.settings.displayMode === 'de-only' ? 'active' : ''}" data-mode="de-only">DE</button>
+              <button class="seg-btn ${state.settings.displayMode === 'phonetic-only' ? 'active' : ''}" data-mode="phonetic-only">Lafal</button>
+              <button class="seg-btn ${state.settings.displayMode === 'blind' ? 'active' : ''}" data-mode="blind">Blind</button>
             </div>
-            <button class="tool-btn ${state.settings.showGenderColors ? 'active' : ''}" id="toggleGenderColorBtn" title="Pewarnaan Artikel Gender (der/die/das)">
-              🎨 Warna Gender
+            <button class="tool-btn-icon ${state.settings.showGenderColors ? 'active' : ''}" id="toggleGenderColorBtn" title="Warna Artikel Gender">
+              🎨
             </button>
           </div>
         </div>
@@ -635,7 +613,7 @@ function renderDialoguesTab(currentConv, filteredList) {
         <!-- TRANSCRIPT SPEECH FLOW -->
         <div class="transcript-card">
           <div class="transcript-header">
-            <span class="transcript-label">Transkrip Percakapan (Klik Kata untuk Bedah Makna)</span>
+            <span class="transcript-label">Transkrip Percakapan</span>
             ${state.settings.showGenderColors ? `
               <div class="gender-legend">
                 <span class="gender-indicator"><span class="dot-der"></span> Maskulin (der)</span>
@@ -703,16 +681,16 @@ function renderDialoguesTab(currentConv, filteredList) {
         <div class="study-tabs-container">
           <div class="panel-tab-nav">
             <button class="panel-tab-btn ${state.currentStudyTab === 'chunks' ? 'active' : ''}" data-study-tab="chunks">
-              🧩 Frasa Kunci (Chunk Bank)
+              🧩 Frasa
             </button>
             <button class="panel-tab-btn ${state.currentStudyTab === 'drill' ? 'active' : ''}" data-study-tab="drill">
-              ⚡ Latihan Pola Kalimat (Satzbau)
+              ⚡ Satzbau
             </button>
             <button class="panel-tab-btn ${state.currentStudyTab === 'culture' ? 'active' : ''}" data-study-tab="culture">
-              🏮 Catatan Budaya & Kulturtipp
+              🏮 Budaya
             </button>
             <button class="panel-tab-btn ${state.currentStudyTab === 'notes' ? 'active' : ''}" data-study-tab="notes">
-              ✍️ Catatan Pribadi Anda
+              ✍️ Catatan
             </button>
           </div>
 
@@ -961,6 +939,21 @@ function attachEventListeners(currentConv) {
   const topSpeedBtn = document.getElementById('topSpeedToggleBtn');
   if (topSpeedBtn) {
     topSpeedBtn.addEventListener('click', cycleAudioSpeed);
+  }
+
+  // Search Toggle (collapsible bar)
+  const searchToggle = document.getElementById('searchToggleBtn');
+  if (searchToggle) {
+    searchToggle.addEventListener('click', () => {
+      state.isSearchOpen = !state.isSearchOpen;
+      renderApp();
+      if (state.isSearchOpen) {
+        setTimeout(() => {
+          const input = document.getElementById('globalSearchInput');
+          if (input) input.focus();
+        }, 50);
+      }
+    });
   }
 
   // If in Dialogues tab
