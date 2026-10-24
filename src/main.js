@@ -384,22 +384,6 @@ function renderApp() {
         ${renderCurrentTabContent(currentConv, filteredList)}
       </main>
 
-      <!-- MOBILE FLOATING AUDIO CONTROLLER (UNTUK DIALOGUES VIEW) -->
-      ${state.activeTab === 'dialogues' ? `
-        <div class="mobile-floating-player ${state.isSequentialPlaying ? 'playing' : ''}">
-          <div class="floating-player-info">
-            <span class="floating-play-indicator">${state.isSequentialPlaying ? '🔊 SEDANG MEMBACA...' : '⏸ DIALOG AKTIF'}</span>
-            <span class="floating-play-title">${currentConv.icon} ${currentConv.titleDe}</span>
-          </div>
-          <div class="floating-player-controls">
-            <button class="floating-speed-btn" id="floatingSpeedBtn" title="Ubah Kecepatan Suara">${state.settings.audioSpeed}x</button>
-            <button class="floating-play-btn ${state.isSequentialPlaying ? 'active' : ''}" id="floatingPlayBtn">
-              ${state.isSequentialPlaying ? '⏹ Stop' : '▶ Putar'}
-            </button>
-          </div>
-        </div>
-      ` : ''}
-
       <!-- MOBILE BOTTOM NAVIGATION (THUMB-FRIENDLY BAR) -->
       <nav class="mobile-bottom-nav" aria-label="Navigasi Menu HP">
         <button class="bottom-nav-item ${state.activeTab === 'dialogues' ? 'active' : ''}" data-tab="dialogues">
@@ -562,34 +546,19 @@ function renderDialoguesTab(currentConv, filteredList) {
       <section class="study-canvas ${displayClass}">
         <!-- MOBILE TOPIC QUICK SWITCHER (PREV / NEXT / DRAWER) -->
         <div class="mobile-topic-nav-container">
-          <!-- QUICK CATEGORY CHIPS SCROLLER -->
-          <div class="mobile-cat-scroll">
-            <button class="mobile-cat-chip ${state.selectedCategory === 'all' ? 'active' : ''}" data-cat="all">
-              🌟 Semua (${CONVERSATIONS.length})
-            </button>
-            ${CATEGORIES.map(cat => `
-              <button 
-                class="mobile-cat-chip ${state.selectedCategory === cat.id ? 'active' : ''}" 
-                data-cat="${cat.id}"
-              >
-                ${cat.icon} ${cat.label}
-              </button>
-            `).join('')}
-          </div>
-
           <!-- TOPIC STEPPER CARD (SATU KETUKAN JEMPOL) -->
           <div class="topic-stepper-card">
             <button class="stepper-step-btn prev-btn" id="prevTopicBtn" ${prevConv ? '' : 'disabled'} title="Topik Sebelumnya">
               <span class="stepper-arrow">◀</span>
               <span class="stepper-label">Prev</span>
             </button>
-            <button class="stepper-center-btn" id="openMobileCatalogBtn" title="Ketuk untuk melihat semua topik percakapan">
+            <button class="stepper-center-btn" id="openMobileCatalogBtn" title="Ketuk untuk melihat daftar semua unit percakapan">
               <div class="stepper-tag-row">
                 <span class="stepper-badge">Unit ${convIndex + 1} / ${CONVERSATIONS.length}</span>
                 <span class="stepper-cat">${currentConv.icon} ${currentConv.category}</span>
               </div>
               <div class="stepper-topic-title">${currentConv.titleDe}</div>
-              <div class="stepper-action-text">Ketuk untuk pilih topik ▾</div>
+              <div class="stepper-action-text">Daftar Unit & Kategori ▾</div>
             </button>
             <button class="stepper-step-btn next-btn" id="nextTopicBtn" ${nextConv ? '' : 'disabled'} title="Topik Berikutnya">
               <span class="stepper-label">Next</span>
@@ -1090,18 +1059,6 @@ function attachEventListeners(currentConv) {
       });
     }
 
-    // Floating Mobile Player Controls
-    const floatPlayBtn = document.getElementById('floatingPlayBtn');
-    if (floatPlayBtn) {
-      floatPlayBtn.addEventListener('click', () => {
-        const playBtn = document.getElementById('playAllBtn');
-        if (playBtn) playBtn.click();
-      });
-    }
-    const floatSpeedBtn = document.getElementById('floatingSpeedBtn');
-    if (floatSpeedBtn) {
-      floatSpeedBtn.addEventListener('click', cycleAudioSpeed);
-    }
 
     // Mark as Completed Toggle
     const toggleCompletedBtn = document.getElementById('toggleCompletedBtn');
